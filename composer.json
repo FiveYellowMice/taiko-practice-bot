@@ -1,0 +1,14 @@
+{
+    "name": "fiveyellowmice/taiko-practice-bot",
+    "type": "project",
+    "require": {
+        "piwik/piwik-php-tracker": "^1.4"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Kaizhe Huang",
+            "email": "hkz85825915@gmail.com"
+        }
+    ]
+}
