@@ -207,10 +207,20 @@ if ($command == 'start') {
     $tracker->doTrackEvent('Game', 'Hit', strtolower($text));
   }
 } elseif (strpos($text, '干') === 0 || strpos($text, '幹') === 0) {
-  send_api_request('sendMessage', [
-    'chat_id' => $chat_id,
-    'text' => "幹你娘",
-  ]);
+  apcu_delete('taiko_practice_bot.user_states.'.$chat_id.'.combo');
+  $fuck_count = apcu_inc('taiko_practice_bot.user_states.'.$chat_id.'.fuck_count', 1, $inc_success, 120);
+  if ($fuck_count >= 3) {
+    apcu_delete('taiko_practice_bot.user_states.'.$chat_id.'.fuck_count');
+    send_api_request('sendMessage', [
+      'chat_id' => $chat_id,
+      'text' => "幹你娘",
+    ]);
+  } else {
+    send_api_request('sendMessage', [
+      'chat_id' => $chat_id,
+      'text' => "不可",
+    ]);
+  }
   if (!$tracking_disabled) {
     $tracker->doTrackEvent('Game', 'Miss', str_replace("\n", ' ', $text));
   }
