@@ -164,7 +164,7 @@ if ($command == 'start') {
   send_api_request('sendMessage', [
     'chat_id' => $chat_id,
     'text' =>
-      "太鼓の達人練習ボット vundefined (<a href=\"https://gist.github.com/FiveYellowMice/eee06bfe61ddcdd8576692a46bfe23db\">code</a>)\n".
+      "太鼓の達人練習ボット v1.1 (<a href=\"https://github.com/FiveYellowMice/taiko-practice-bot\">code</a>)\n".
       "Send /start and /end to start and end the game. Send 'どん', 'かつ', 'か', 'ドン', 'カツ', 'カ', 'don', 'katsu', 'ka', '咚', '咔', '🔴', '🔵' to play.\n".
       "Usage of this bot will be tracked, you can send /tracking_opt_out and /tracking_opt_in to disable and enable tracking.\n".
       "Inspired by <a href=\"https://t.me/yingyoushadiao/3149\">this screenshot</a>. Made with 🥁 by @FiveYellowMice.",
