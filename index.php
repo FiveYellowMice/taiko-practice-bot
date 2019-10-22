@@ -65,6 +65,8 @@ if (!$update) {
 http_response_code(204);
 
 $message = $update['message'] ?? die();
+$chat_id = $message['chat']['id'] ?? die();
+if (!is_numeric($chat_id)) die();
 $text = $message['text'] ?? '';
 
 preg_match('/^\/(\w+)(?:'.TELEGRAM_USERNAME.')?(?: (.*)|$)/', $text, $matches);
@@ -76,7 +78,7 @@ unset($matches);
 $opt_out_list_file = fopen(__DIR__.'/data/tracking_opt_out.json', 'c+');
 flock($opt_out_list_file, LOCK_SH);
 $opt_out_list = json_decode(fgets($opt_out_list_file), true);
-$tracking_disabled = $opt_out_list[$message['chat']['id']] ?? false;
+$tracking_disabled = $opt_out_list[$chat_id] ?? false;
 flock($opt_out_list_file, LOCK_UN);
 fclose($opt_out_list_file);
 
@@ -85,7 +87,7 @@ $tracker->disableSendImageResponse();
 $tracker->setTokenAuth(MATOMO_TOKEN);
 $tracker->setUrl('/');
 $tracker->setIp('0.0.0.0');
-$tracker->setUserId($message['chat']['id']);
+$tracker->setUserId($chat_id);
 $tracker->setBrowserLanguage($message['user']['language_code'] ?? null);
 
 if ($command == 'start') {
@@ -115,7 +117,7 @@ if ($command == 'start') {
       break;
   }
   send_api_request('sendMessage', [
-    'chat_id' => $message['chat']['id'],
+    'chat_id' => $chat_id,
     'text' => "さあ、始まるドン！",
     'reply_markup' => [
       'keyboard' => [
@@ -139,7 +141,7 @@ if ($command == 'start') {
   }
 } elseif ($command == 'end') {
   send_api_request('sendMessage', [
-    'chat_id' => $message['chat']['id'],
+    'chat_id' => $chat_id,
     'text' => "上手に演奏できたドン！",
     'reply_markup' => [
       'remove_keyboard' => true,
@@ -150,7 +152,7 @@ if ($command == 'start') {
   }
 } elseif ($command == 'help') {
   send_api_request('sendMessage', [
-    'chat_id' => $message['chat']['id'],
+    'chat_id' => $chat_id,
     'text' =>
       "太鼓の達人練習ボット vundefined (<a href=\"https://gist.github.com/FiveYellowMice/eee06bfe61ddcdd8576692a46bfe23db\">code</a>)\n".
       "Send /start and /end to start and end the game. Send 'どん', 'かつ', 'か', 'ドン', 'カツ', 'カ', 'don', 'katsu', 'ka', '咚', '咔', '🔴', '🔵' to play.\n".
@@ -165,7 +167,7 @@ if ($command == 'start') {
   }
 } elseif ($command == 'choose_buttoon_style') {
   send_api_request('sendMessage', [
-    'chat_id' => $message['chat']['id'],
+    'chat_id' => $chat_id,
     'text' => 'Choose one of the following button styles and start the game:',
     'reply_markup' => [
       'keyboard' => [
@@ -180,34 +182,46 @@ if ($command == 'start') {
   $opt_out_list_file = fopen(__DIR__.'/data/tracking_opt_out.json', 'c+');
   flock($opt_out_list_file, LOCK_EX);
   $opt_out_list = json_decode(fgets($opt_out_list_file), true);
-  $opt_out_list[$message['chat']['id']] = $command == 'tracking_opt_out';
+  $opt_out_list[$chat_id] = $command == 'tracking_opt_out';
   fseek($opt_out_list_file, 0);
   ftruncate($opt_out_list_file, 0);
   fwrite($opt_out_list_file, json_encode($opt_out_list));
   flock($opt_out_list_file, LOCK_UN);
   fclose($opt_out_list_file);
   send_api_request('sendMessage', [
-    'chat_id' => $message['chat']['id'],
+    'chat_id' => $chat_id,
     'text' => 'Tracking has been '.($command == 'tracking_opt_out' ? 'disabled' : 'enabled').'.'
   ]);
-} elseif (in_array(strtolower($text) ?? '', ['どん', 'かつ', 'か', 'ドン', 'カツ', 'カ', 'don', 'katsu', 'ka', '咚', '咔', '🔴', '🔵'])) {
+} elseif (in_array(strtolower($text), ['どん', 'かつ', 'か', 'ドン', 'カツ', 'カ', 'don', 'katsu', 'ka', '咚', '咔', '🔴', '🔵'])) {
+  $combo = apcu_inc('taiko_practice_bot.user_states.'.$chat_id.'.combo', 1, $inc_success, 120);
   if (rand(0, 2) === 0) {
-    send_api_request('sendMessage', [
-      'chat_id' => $message['chat']['id'],
-      'text' => "可",
-    ]);
+    $hit_result = "可";
   } else {
-    send_api_request('sendMessage', [
-      'chat_id' => $message['chat']['id'],
-      'text' => "良",
-    ]);
+    $hit_result = "良";
   }
+  if ($combo > 0 && $combo % 50 == 0) {
+    $hit_result = $hit_result.'  <b>'.$combo." 連打！</b>";
+  }
+  send_api_request('sendMessage', [
+    'chat_id' => $chat_id,
+    'text' => $hit_result,
+    'parse_mode' => 'HTML',
+  ]);
   if (!$tracking_disabled) {
     $tracker->doTrackEvent('Game', 'Hit', strtolower($text));
   }
-} else {
+} elseif (strpos($text, '干') === 0 || strpos($text, '幹') === 0) {
   send_api_request('sendMessage', [
-    'chat_id' => $message['chat']['id'],
+    'chat_id' => $chat_id,
+    'text' => "幹你娘",
+  ]);
+  if (!$tracking_disabled) {
+    $tracker->doTrackEvent('Game', 'Miss', str_replace("\n", ' ', $text));
+  }
+} else {
+  apcu_delete('taiko_practice_bot.user_states.'.$chat_id.'.combo');
+  send_api_request('sendMessage', [
+    'chat_id' => $chat_id,
     'text' => "不可",
   ]);
   if (!$tracking_disabled) {
