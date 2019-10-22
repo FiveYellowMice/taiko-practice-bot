@@ -195,7 +195,7 @@ if ($command == 'start') {
   } else {
     $hit_result = "良";
   }
-  if ($combo > 0 && $combo % 50 == 0) {
+  if ($combo > 0 && $combo % 25 == 0) {
     $hit_result = $hit_result.'  <b>'.$combo." 連打！</b>";
   }
   send_api_request('sendMessage', [
